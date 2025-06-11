@@ -18,70 +18,45 @@ export const processImage = createAsyncThunk<ProcessImageResponse, Payload>(
   async ({ carImage, backgroundImage, logoImage, logoPosition }, thunkAPI) => {
     debugger;
     try {
-      // Convert all files to base64 if provided
-      const carBase64 = await fileToBase64(carImage);
-      const bgBase64 = backgroundImage
-        ? await fileToBase64(backgroundImage)
-        : null;
-      const logoBase64 = logoImage ? await fileToBase64(logoImage) : null;
+      const payload = new FormData();
 
-      // Build the prompt dynamically
-      let prompt = "Remove the background from the car image.";
-      if (bgBase64) {
-        prompt += " Replace it with the provided background image.";
-      }
-      if (logoBase64) {
-        prompt += ` Add the logo image at the ${
-          logoPosition || "bottom-right"
-        } corner.`;
+      if (carImage) {
+        payload.append("car_image", carImage);
+      } else {
+        throw new Error("Car image is required");
       }
 
-      // Build image content array
-      const content: any[] = [
-        { type: "text", text: prompt },
-        { type: "image_url", image_url: { url: carBase64 } },
-      ];
-
-      if (bgBase64) {
-        content.push({ type: "image_url", image_url: { url: bgBase64 } });
+      if (logoImage) {
+        payload.append("logo", logoImage);
       }
 
-      if (logoBase64) {
-        content.push({ type: "image_url", image_url: { url: logoBase64 } });
+      if (backgroundImage) {
+        payload.append("background", backgroundImage);
       }
-      debugger;
 
-      // Send to OpenAI Vision
-      const response = await axios.post(
-        "https://api.openai.com/v1/chat/completions",
-        {
-          model: "gpt-4o",
-          messages: [
-            {
-              role: "user",
-              content,
-            },
-          ],
-          max_tokens: 300,
+      payload.append("logo_position", logoPosition || "bottom-right");
+
+      const url = "http://54.198.93.160/api/v1/process-car-image";
+
+      const response = await axios.post(url, payload, {
+        headers: {
+          "Content-Type": "multipart/form-data",
         },
-        {
-          headers: {
-            Authorization: `Bearer ${
-              import.meta.env.VITE_PROD_SHOW_OPENAI_KEY
-            }`,
-            "Content-Type": "application/json",
-          },
-        }
-      );
+        responseType: "blob",
+      });
+      const imageUrl = URL.createObjectURL(response.data);
 
       return {
-        original: carBase64,
-        processed: response.data.choices[0].message.content,
+        original: "",
+        processed: imageUrl,
       };
-    } catch (err: any) {
-      console.error("OpenAI error:", err.response?.data || err.message);
+    } catch (error: any) {
+      console.error(
+        "Image processing failed:",
+        error.response?.data || error.message
+      );
       return thunkAPI.rejectWithValue(
-        err.response?.data || "Image processing failed"
+        error.response?.data || "Image processing failed"
       );
     }
   }

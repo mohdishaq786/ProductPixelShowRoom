@@ -24,9 +24,19 @@ export const imageEditorSlice = createSlice({
   initialState,
   reducers: {
     setOriginalImage: (state, action: PayloadAction<string | null>) => {
-      debugger;
       state.originalImage = action.payload;
-      state.activeImage = action.payload;
+      if (
+        !state.processedImage &&
+        action.payload &&
+        action.payload.trim() !== ""
+      ) {
+        console.log(" setting activeImage from original");
+        state.activeImage = action.payload;
+      } else {
+        console.log(
+          " Skipping activeImage update (processedImage already exists)"
+        );
+      }
     },
     setProcessedImage: (state, action: PayloadAction<string | null>) => {
       state.processedImage = action.payload;
@@ -55,13 +65,19 @@ export const imageEditorSlice = createSlice({
   extraReducers: (builder) => {
     builder
       .addCase(processImage.pending, (state) => {
-        debugger;
         state.isProcessing = true;
       })
       .addCase(processImage.fulfilled, (state, action) => {
-        state.originalImage = action.payload.original;
-        state.processedImage = action.payload.processed;
-        state.activeImage = action.payload.processed;
+        // Store processed image only if present  issue time check this
+        if (action.payload.processed) {
+          state.processedImage = action.payload.processed;
+          state.activeImage = action.payload.processed;
+        }
+
+        // Only store original image if it's non-empty base64
+        if (action.payload.original) {
+          state.originalImage = action.payload.original;
+        }
         state.isProcessing = false;
       })
       .addCase(processImage.rejected, (state) => {

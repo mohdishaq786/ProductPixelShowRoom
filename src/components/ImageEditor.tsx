@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Download, Image, Save } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -10,24 +10,30 @@ import ImageUploadModal from "./ImageUploadModal";
 interface ImageEditorProps {
   originalImage: string | null;
   onReset: () => void;
+  onImageUpload: (payload: {
+    carImage: File;
+    backgroundImage?: File;
+    logoImage?: File;
+    logoPosition?: "top-left" | "top-right" | "bottom-left" | "bottom-right";
+  }) => void;
 }
 
 const ImageEditor: React.FC<ImageEditorProps> = ({
   originalImage,
   onReset,
+  onImageUpload,
 }) => {
   const dispatch = useAppDispatch();
   const { activeImage, isProcessing } = useAppSelector(
     (state) => state.imageEditor
   );
+
   const { toast } = useToast();
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
 
-  const handleImageUpload = (file: File) => {
-    debugger;
-    console.log("Api call from here");
-    // No automatic toast notification here, will be handled after processing completes
-  };
+  useEffect(() => {
+    // console.log("ImageEditor sees activeImage:", activeImage);
+  }, [activeImage]);
 
   const handleDownload = () => {
     if (!activeImage) return;
@@ -48,10 +54,10 @@ const ImageEditor: React.FC<ImageEditorProps> = ({
 
   const handleReset = () => {
     onReset();
-    dispatch(resetImages());
+    // dispatch(resetImages());
   };
 
-  if (!originalImage) {
+  if (!activeImage) {
     return (
       <div className="w-full max-w-3xl mx-auto mt-12 text-center">
         <div className="flex flex-col items-center justify-center py-12 px-4">
@@ -75,11 +81,14 @@ const ImageEditor: React.FC<ImageEditorProps> = ({
             <Image className="mr-2 h-5 w-5" /> Upload Car Image
           </Button>
 
-          {/* <ImageUploadModal
+          <ImageUploadModal
             open={uploadModalOpen}
             onOpenChange={setUploadModalOpen}
-            onImageUpload={handleImageUpload}
-          />  */}
+            onImageUpload={(payload) => {
+              setUploadModalOpen(false);
+              onImageUpload(payload); // delegate to parent
+            }}
+          />
         </div>
       </div>
     );
@@ -169,12 +178,15 @@ const ImageEditor: React.FC<ImageEditorProps> = ({
           </Button>
         </div>
       </div>
-      {/* 
+
       <ImageUploadModal
         open={uploadModalOpen}
         onOpenChange={setUploadModalOpen}
-        onImageUpload={handleImageUpload}
-      /> */}
+        onImageUpload={(payload) => {
+          setUploadModalOpen(false);
+          onImageUpload(payload); // delegate to parent
+        }}
+      />
     </div>
   );
 };

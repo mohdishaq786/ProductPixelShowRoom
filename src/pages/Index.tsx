@@ -6,7 +6,12 @@ import { Button } from "@/components/ui/button";
 import { Image } from "lucide-react";
 import { loadImage } from "@/utils/imageUtils";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
-import { setOriginalImage, setIsProcessing } from "@/redux/imageEditorSlice";
+import { useToast } from "@/hooks/use-toast";
+import {
+  setOriginalImage,
+  setIsProcessing,
+  resetImages,
+} from "@/redux/imageEditorSlice";
 import { processImage } from "@/redux/imageEditorThunks";
 import ImageUploadModal from "@/components/ImageUploadModal";
 
@@ -16,35 +21,40 @@ const Index = () => {
     (state) => state.imageEditor
   );
   const [uploadModalOpen, setUploadModalOpen] = useState(false);
+  const { toast } = useToast();
 
-  // const handleImageUpload = async (file: File) => {
-  //   try {
-  //     debugger;
-  //     dispatch(setIsProcessing(true));
-  //     const img = await loadImage(file);
-  //     const dataUrl = img.src;
-  //     debugger;
-  //     console.log(img);
-  //     dispatch(setOriginalImage(dataUrl));
-  //     dispatch(setIsProcessing(false));
-  //   } catch (error) {
-  //     dispatch(setIsProcessing(false));
-  //     console.error("Error loading image:", error);
-  //   }
-  // };
   const handleImageUpload = async (payload: {
     carImage: File;
     backgroundImage?: File;
     logoImage?: File;
     logoPosition?: "top-left" | "top-right" | "bottom-left" | "bottom-right";
   }) => {
-    debugger;
     try {
+      // dispatch(resetImages()); //changge
       dispatch(setIsProcessing(true));
-      dispatch(processImage(payload));
+      const resultAction = await dispatch(processImage(payload));
+
+      if (processImage.fulfilled.match(resultAction)) {
+        toast({
+          title: "Image processed",
+          description: "Your car image has been edited successfully.",
+          duration: 3000,
+        });
+        debugger;
+        console.log(" Image processed:", resultAction.payload.processed);
+      } else {
+        console.error("Image processing failed:", resultAction.payload);
+        toast({
+          title: "Image processing failed",
+          // description: resultAction.payload,
+        });
+        dispatch(resetImages());
+      }
     } catch (error) {
+      console.error("Unexpected error:", error);
+      dispatch(resetImages());
+    } finally {
       dispatch(setIsProcessing(false));
-      console.error("Error processing image:", error);
     }
   };
 
@@ -107,6 +117,7 @@ const Index = () => {
                 <ImageEditor
                   originalImage={originalImage}
                   onReset={handleReset}
+                  onImageUpload={handleImageUpload}
                 />
               )}
             </div>
